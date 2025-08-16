@@ -19,6 +19,27 @@ export const metadata: Metadata = {
   title: "VideoConvert Pro - Professional Video Converter",
   description: "Convert your videos to any format with our professional video converter tool",
   generator: "v0.app",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      {
+        url: "/video-convert-icon.svg",
+        type: "image/svg+xml",
+      },
+      {
+        url: "/favicon.ico",
+        sizes: "32x32",
+        type: "image/x-icon",
+      },
+    ],
+    apple: [
+      {
+        url: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
 }
 
 export default function RootLayout({
