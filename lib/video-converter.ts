@@ -1,40 +1,53 @@
-import { FFmpeg } from "@ffmpeg/ffmpeg"
-import { fetchFile, toBlobURL } from "@ffmpeg/util"
-
 export interface ConversionProgress {
   progress: number
   time: number
   speed: string
 }
 
+interface FFmpegInstance {
+  on: (event: string, callback: (data: { message?: string; progress?: number; time?: number }) => void) => void
+  load: (config: { coreURL: string; wasmURL: string; workerURL: string }) => Promise<void>
+  writeFile: (filename: string, data: Uint8Array) => Promise<void>
+  exec: (command: string[]) => Promise<void>
+  readFile: (filename: string) => Promise<Uint8Array>
+  deleteFile: (filename: string) => Promise<void>
+  terminate: () => void
+}
+
 export class VideoConverter {
-  private ffmpeg: FFmpeg
+  private ffmpeg: FFmpegInstance | null = null
   private loaded = false
 
   constructor() {
-    this.ffmpeg = new FFmpeg()
+    // FFmpeg will be loaded dynamically on the client side
   }
 
   async load(onProgress?: (progress: ConversionProgress) => void) {
     if (this.loaded) return
 
-    const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd"
-
-    this.ffmpeg.on("log", ({ message }) => {
-      console.log("[FFmpeg]", message)
-    })
-
-    if (onProgress) {
-      this.ffmpeg.on("progress", ({ progress, time }) => {
-        onProgress({
-          progress: Math.round(progress * 100),
-          time,
-          speed: "1x",
-        })
-      })
-    }
-
     try {
+      // Dynamically import FFmpeg only on the client side
+      const { FFmpeg } = await import("@ffmpeg/ffmpeg")
+      const { toBlobURL } = await import("@ffmpeg/util")
+      
+      this.ffmpeg = new FFmpeg()
+      
+      const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd"
+
+      this.ffmpeg.on("log", ({ message }: { message: string }) => {
+        console.log("[FFmpeg]", message)
+      })
+
+      if (onProgress) {
+        this.ffmpeg.on("progress", ({ progress, time }: { progress: number; time: number }) => {
+          onProgress({
+            progress: Math.round(progress * 100),
+            time,
+            speed: "1x",
+          })
+        })
+      }
+
       await this.ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
@@ -59,6 +72,8 @@ export class VideoConverter {
     }
 
     try {
+      const { fetchFile } = await import("@ffmpeg/util")
+      
       const inputName = `input.${file.name.split(".").pop()}`
       const outputName = `output.${outputFormat}`
 
